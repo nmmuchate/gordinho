@@ -1,0 +1,63 @@
+[debug] [2025-03-16T16:01:57.892Z] ----------------------------------------------------------------------
+[debug] [2025-03-16T16:01:57.900Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\nickMu\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js init
+[debug] [2025-03-16T16:01:57.901Z] CLI Version:   13.34.0
+[debug] [2025-03-16T16:01:57.902Z] Platform:      win32
+[debug] [2025-03-16T16:01:57.902Z] Node Version:  v20.16.0
+[debug] [2025-03-16T16:01:57.903Z] Time:          Sun Mar 16 2025 16:01:57 GMT+0000 (Greenwich Mean Time)
+[debug] [2025-03-16T16:01:57.903Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-03-16T16:01:57.938Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-03-16T16:01:57.939Z] > authorizing via signed-in user (nicolas.muchate@gmail.com)
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  C:\Users\nickMu\Documents\GitHub\gordinho
+
+[info] 
+=== Project Setup
+[info] 
+[info] First, let's associate this project directory with a Firebase project.
+[info] You can create multiple project aliases by running firebase use --add, 
+[info] but for now we'll just set up a default project.
+[info] 
+[debug] [2025-03-16T16:02:34.948Z] Checked if tokens are valid: true, expires at: 1742144462122
+[debug] [2025-03-16T16:02:34.948Z] Checked if tokens are valid: true, expires at: 1742144462122
+[debug] [2025-03-16T16:02:34.964Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=100
+[debug] [2025-03-16T16:02:42.506Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2025-03-16T16:02:42.507Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] i  Using project gordinhoss (gordinho) 
+[info] 
+=== Firestore Setup
+[debug] [2025-03-16T16:02:45.316Z] Checked if tokens are valid: true, expires at: 1742144462122
+[debug] [2025-03-16T16:02:45.316Z] Checked if tokens are valid: true, expires at: 1742144462122
+[debug] [2025-03-16T16:02:45.317Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/gordinhoss/services/firestore.googleapis.com [none]
+[debug] [2025-03-16T16:02:45.317Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/gordinhoss/services/firestore.googleapis.com x-goog-quota-user=projects/gordinhoss
+[debug] [2025-03-16T16:02:48.161Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/gordinhoss/services/firestore.googleapis.com 200
+[debug] [2025-03-16T16:02:48.161Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/gordinhoss/services/firestore.googleapis.com [omitted]
+[debug] [2025-03-16T16:02:48.162Z] Checked if tokens are valid: true, expires at: 1742144462122
+[debug] [2025-03-16T16:02:48.162Z] Checked if tokens are valid: true, expires at: 1742144462122
+[debug] [2025-03-16T16:02:48.162Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/gordinhoss/databases/(default) [none]
+[debug] [2025-03-16T16:02:52.337Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/gordinhoss/databases/(default) 404
+[debug] [2025-03-16T16:02:52.338Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/gordinhoss/databases/(default) {"error":{"code":404,"message":"Project 'gordinhoss' or database '(default)' does not exist.","status":"NOT_FOUND"}}
+[debug] [2025-03-16T16:02:52.339Z] error getting database type:  Request to https://firestore.googleapis.com/v1/projects/gordinhoss/databases/(default) had HTTP Error: 404, Project 'gordinhoss' or database '(default)' does not exist. {"name":"FirebaseError","children":[],"context":{"body":{"error":{"code":404,"message":"Project 'gordinhoss' or database '(default)' does not exist.","status":"NOT_FOUND"}},"response":{"statusCode":404}},"exit":1,"message":"Request to https://firestore.googleapis.com/v1/projects/gordinhoss/databases/(default) had HTTP Error: 404, Project 'gordinhoss' or database '(default)' does not exist.","status":404}
+[info] (default) does not exist in project gordinhoss.
+[debug] [2025-03-16T16:02:52.353Z] database_type: DATABASE_DOES_NOT_EXIST
+[debug] [2025-03-16T16:03:43.472Z] Checked if tokens are valid: true, expires at: 1742144462122
+[debug] [2025-03-16T16:03:43.472Z] Checked if tokens are valid: true, expires at: 1742144462122
+[debug] [2025-03-16T16:03:43.473Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/gordinhoss/databases/food [none]
+[debug] [2025-03-16T16:04:04.896Z] *** [apiv2] error from fetch(https://firestore.googleapis.com/v1/projects/gordinhoss/databases/food, {"headers":{},"method":"GET"}): FetchError: request to https://firestore.googleapis.com/v1/projects/gordinhoss/databases/food failed, reason: connect ETIMEDOUT 192.178.54.138:443
+[debug] [2025-03-16T16:04:04.897Z] error getting database type:  Failed to make request to https://firestore.googleapis.com/v1/projects/gordinhoss/databases/food {"name":"FirebaseError","children":[],"exit":1,"message":"Failed to make request to https://firestore.googleapis.com/v1/projects/gordinhoss/databases/food","original":{"message":"request to https://firestore.googleapis.com/v1/projects/gordinhoss/databases/food failed, reason: connect ETIMEDOUT 192.178.54.138:443","type":"system","errno":"ETIMEDOUT","code":"ETIMEDOUT"},"status":500}
+[debug] [2025-03-16T16:04:04.898Z] database_type: undefined
+[debug] [2025-03-16T16:04:04.898Z] database_type: undefined
+[debug] [2025-03-16T16:04:09.969Z] Error: Timed out.
+    at Timeout._onTimeout (C:\Users\nickMu\AppData\Roaming\npm\node_modules\firebase-tools\lib\utils.js:269:49)
+    at listOnTimeout (node:internal/timers:581:17)
+    at process.processTimers (node:internal/timers:519:7)
+[error] 
+[error] Error: An unexpected error has occurred.

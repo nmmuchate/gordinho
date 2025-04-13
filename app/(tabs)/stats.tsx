@@ -1,172 +1,187 @@
 import { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
-import { LineChart, BarChart } from 'react-native-chart-kit';
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AddFoodButton from '@/components/AddFoodButton';
+import { LineChart, PieChart } from 'react-native-chart-kit';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { useFoodStore } from '../../stores/food';
+import { useAuthStore } from '../../stores/auth';
+import LoadingScreen from '../../components/LoadingScreen';
+import AddFoodButton from '../../components/AddFoodButton';
 
-export default function StatsScreen() {
-  const [activeTab, setActiveTab] = useState('week');
-  const [currentPeriod, setCurrentPeriod] = useState('Esta semana');
-  
-  // Dados de exemplo para os gráficos
-  const weekData = {
-    labels: ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"],
-    datasets: [
-      {
-        data: [1850, 1750, 2100, 1950, 2200, 2300, 1800],
-        color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
-      }
-    ],
+const screenWidth = Dimensions.get('window').width;
+
+export default function NutritionScreen() {
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const { profile } = useAuthStore();
+  const { entries, getTotalCalories, getMacroTotals, isLoading } = useFoodStore();
+
+  if (isLoading) {
+    return <LoadingScreen message="Loading nutrition data..." />;
+  }
+
+  const dailyGoal = profile?.dailyCalories || 2000;
+  const totalCalories = getTotalCalories(selectedDate);
+  const macros = getMacroTotals(selectedDate);
+
+  const caloriesData = {
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    datasets: [{
+      data: [1800, 2200, 1950, totalCalories, 0, 0, 0],
+    }],
   };
-  
-  const monthData = {
-    labels: ["Semana 1", "Semana 2", "Semana 3", "Semana 4"],
-    datasets: [
-      {
-        data: [1950, 2050, 1900, 2100],
-        color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
-      }
-    ],
-  };
-  
-  const macroData = {
-    labels: ["Proteínas", "Carboidratos", "Gorduras"],
-    data: [0.8, 0.6, 0.7]
-  };
-  
-  const nutritionData = {
-    labels: ["Proteínas", "Carboidratos", "Gorduras"],
-    datasets: [
-      {
-        data: [80, 120, 45],
-        colors: [
-          (opacity = 1) => `rgba(255, 107, 107, ${opacity})`,
-          (opacity = 1) => `rgba(78, 205, 196, ${opacity})`,
-          (opacity = 1) => `rgba(255, 209, 102, ${opacity})`,
-        ]
-      }
-    ]
-  };
-  
-  const chartConfig = {
-    backgroundGradientFrom: "#fff",
-    backgroundGradientTo: "#fff",
-    decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-    style: {
-      borderRadius: 16
+
+  const macroData = [
+    {
+      name: 'Protein',
+      calories: macros.protein * 4,
+      color: '#0891b2',
+      legendFontColor: '#64748b',
     },
-    propsForDots: {
-      r: "6",
-      strokeWidth: "2",
-      stroke: "#2196F3"
-    }
+    {
+      name: 'Carbs',
+      calories: macros.carbs * 4,
+      color: '#059669',
+      legendFontColor: '#64748b',
+    },
+    {
+      name: 'Fat',
+      calories: macros.fat * 9,
+      color: '#d97706',
+      legendFontColor: '#64748b',
+    },
+  ];
+
+  const changeDate = (days: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + days);
+    setSelectedDate(newDate);
   };
-  
-  const width = Dimensions.get("window").width - 40;
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  const calculateProgress = () => {
+    return (totalCalories / dailyGoal) * 100;
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Minhas Estatísticas</Text>
+          <Text style={styles.title}>Nutrition Tracking</Text>
+          <Text style={styles.subtitle}>Monitor your daily intake</Text>
         </View>
-        
-        <View style={styles.periodSelector}>
-          <TouchableOpacity>
-            <ChevronLeft size={24} color="#666" />
+
+        <View style={styles.dateSelector}>
+          <TouchableOpacity onPress={() => changeDate(-1)}>
+            <ChevronLeft size={24} color="#0891b2" />
           </TouchableOpacity>
-          <View style={styles.periodDisplay}>
-            <CalendarDays size={18} color="#666" style={styles.calendarIcon} />
-            <Text style={styles.periodText}>{currentPeriod}</Text>
+          <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
+          <TouchableOpacity onPress={() => changeDate(1)}>
+            <ChevronRight size={24} color="#0891b2" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.calorieCard}>
+          <View style={styles.calorieHeader}>
+            <Text style={styles.calorieTitle}>Calories</Text>
+            <Text style={styles.calorieSubtitle}>Daily Goal: {dailyGoal}</Text>
           </View>
-          <TouchableOpacity>
-            <ChevronRight size={24} color="#666" />
-          </TouchableOpacity>
+          
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <View 
+                style={[
+                  styles.progressFill,
+                  { width: `${Math.min(calculateProgress(), 100)}%` },
+                  calculateProgress() > 100 && styles.progressOverage
+                ]}
+              />
+            </View>
+            <View style={styles.progressLabels}>
+              <Text style={styles.progressText}>{totalCalories}</Text>
+              <Text style={styles.progressText}>{dailyGoal}</Text>
+            </View>
+          </View>
         </View>
-        
-        <View style={styles.tabsContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'week' && styles.activeTab]}
-            onPress={() => setActiveTab('week')}
-          >
-            <Text style={[styles.tabText, activeTab === 'week' && styles.activeTabText]}>Semana</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'month' && styles.activeTab]}
-            onPress={() => setActiveTab('month')}
-          >
-            <Text style={[styles.tabText, activeTab === 'month' && styles.activeTabText]}>Mês</Text>
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>Consumo de Calorias</Text>
+
+        <View style={styles.chartCard}>
+          <Text style={styles.chartTitle}>Weekly Progress</Text>
           <LineChart
-            data={activeTab === 'week' ? weekData : monthData}
-            width={width}
+            data={caloriesData}
+            width={screenWidth - 40}
             height={220}
-            chartConfig={chartConfig}
+            chartConfig={{
+              backgroundColor: '#ffffff',
+              backgroundGradientFrom: '#ffffff',
+              backgroundGradientTo: '#ffffff',
+              decimalPlaces: 0,
+              color: (opacity = 1) => `rgba(8, 145, 178, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(100, 116, 139, ${opacity})`,
+              style: {
+                borderRadius: 16,
+              },
+              propsForDots: {
+                r: '6',
+                strokeWidth: '2',
+                stroke: '#0891b2',
+              },
+            }}
             bezier
             style={styles.chart}
           />
         </View>
-        
-        <View style={styles.statsCards}>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsCardTitle}>Média de Calorias</Text>
-            <Text style={styles.statsCardValue}>1.950</Text>
-            <Text style={styles.statsCardSubtitle}>calorias/dia</Text>
+
+        <View style={styles.macrosCard}>
+          <Text style={styles.chartTitle}>Macronutrient Distribution</Text>
+          <View style={styles.macrosContent}>
+            <PieChart
+              data={macroData}
+              width={screenWidth - 40}
+              height={220}
+              chartConfig={{
+                color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+              }}
+              accessor="calories"
+              backgroundColor="transparent"
+              paddingLeft="15"
+              absolute
+            />
           </View>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsCardTitle}>Meta Atingida</Text>
-            <Text style={styles.statsCardValue}>85%</Text>
-            <Text style={styles.statsCardSubtitle}>dos dias</Text>
-          </View>
-        </View>
-        
-        <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>Consumo de Macronutrientes</Text>
-          <BarChart
-            data={nutritionData}
-            width={width}
-            height={220}
-            chartConfig={chartConfig}
-            style={styles.chart}
-            fromZero={true}
-            yAxisLabel=""
-            yAxisSuffix="g"
-          />
-        </View>
-        
-        <View style={styles.summaryContainer}>
-          <Text style={styles.summaryTitle}>Resumo Nutricional</Text>
-          <View style={styles.summaryItem}>
-            <View style={styles.summaryItemHeader}>
-              <View style={[styles.macroIndicator, { backgroundColor: '#FF6B6B' }]} />
-              <Text style={styles.summaryItemTitle}>Proteínas</Text>
+
+          <View style={styles.macrosList}>
+            <View style={styles.macroItem}>
+              <View style={[styles.macroIndicator, { backgroundColor: '#0891b2' }]} />
+              <View style={styles.macroInfo}>
+                <Text style={styles.macroLabel}>Protein</Text>
+                <Text style={styles.macroValue}>{macros.protein}g</Text>
+              </View>
             </View>
-            <Text style={styles.summaryItemValue}>80g / 120g</Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <View style={styles.summaryItemHeader}>
-              <View style={[styles.macroIndicator, { backgroundColor: '#4ECDC4' }]} />
-              <Text style={styles.summaryItemTitle}>Carboidratos</Text>
+
+            <View style={styles.macroItem}>
+              <View style={[styles.macroIndicator, { backgroundColor: '#059669' }]} />
+              <View style={styles.macroInfo}>
+                <Text style={styles.macroLabel}>Carbs</Text>
+                <Text style={styles.macroValue}>{macros.carbs}g</Text>
+              </View>
             </View>
-            <Text style={styles.summaryItemValue}>120g / 200g</Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <View style={styles.summaryItemHeader}>
-              <View style={[styles.macroIndicator, { backgroundColor: '#FFD166' }]} />
-              <Text style={styles.summaryItemTitle}>Gorduras</Text>
+
+            <View style={styles.macroItem}>
+              <View style={[styles.macroIndicator, { backgroundColor: '#d97706' }]} />
+              <View style={styles.macroInfo}>
+                <Text style={styles.macroLabel}>Fat</Text>
+                <Text style={styles.macroValue}>{macros.fat}g</Text>
+              </View>
             </View>
-            <Text style={styles.summaryItemValue}>45g / 65g</Text>
           </View>
         </View>
       </ScrollView>
-      <AddFoodButton/>
+      <AddFoodButton />
     </SafeAreaView>
   );
 }
@@ -174,156 +189,155 @@ export default function StatsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#ffffff',
+  },
+  scrollView: {
+    flex: 1,
   },
   header: {
     padding: 20,
+    backgroundColor: '#ffffff',
   },
-  headerTitle: {
-    fontSize: 24,
+  title: {
+    fontSize: 28,
     fontWeight: 'bold',
+    color: '#0f172a',
   },
-  periodSelector: {
+  subtitle: {
+    fontSize: 16,
+    color: '#64748b',
+    marginTop: 4,
+  },
+  dateSelector: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 15,
+    paddingVertical: 10,
+    backgroundColor: '#f8fafc',
+    marginHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 20,
   },
-  periodDisplay: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  calendarIcon: {
-    marginRight: 5,
-  },
-  periodText: {
+  dateText: {
     fontSize: 16,
     fontWeight: '500',
+    color: '#0f172a',
   },
-  tabsContainer: {
-    flexDirection: 'row',
+  calorieCard: {
+    backgroundColor: '#ffffff',
     marginHorizontal: 20,
-    marginBottom: 20,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 3,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 6,
-  },
-  activeTab: {
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.5,
-    elevation: 2,
-  },
-  tabText: {
-    color: '#666',
-    fontWeight: '500',
-  },
-  activeTabText: {
-    color: '#2196F3',
-    fontWeight: 'bold',
-  },
-  chartContainer: {
-    backgroundColor: '#fff',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 15,
-    borderRadius: 10,
+    borderRadius: 12,
+    padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    marginBottom: 20,
+  },
+  calorieHeader: {
+    marginBottom: 16,
+  },
+  calorieTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  calorieSubtitle: {
+    fontSize: 14,
+    color: '#64748b',
+    marginTop: 4,
+  },
+  progressContainer: {
+    marginTop: 10,
+  },
+  progressBar: {
+    height: 12,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#0891b2',
+    borderRadius: 6,
+  },
+  progressOverage: {
+    backgroundColor: '#ef4444',
+  },
+  progressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  progressText: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  chartCard: {
+    backgroundColor: '#ffffff',
+    marginHorizontal: 20,
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginBottom: 20,
   },
   chartTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
+    fontWeight: '600',
+    color: '#0f172a',
+    marginBottom: 16,
   },
   chart: {
     marginVertical: 8,
     borderRadius: 16,
   },
-  statsCards: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 20,
-  },
-  statsCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginRight: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    alignItems: 'center',
-  },
-  statsCardTitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 5,
-  },
-  statsCardValue: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#2196F3',
-  },
-  statsCardSubtitle: {
-    fontSize: 12,
-    color: '#999',
-  },
-  summaryContainer: {
-    backgroundColor: '#fff',
-    marginHorizontal: 20,
-    marginBottom: 30,
-    padding: 15,
-    borderRadius: 10,
+  macrosCard: {
+    backgroundColor: '#ffffff',
+    margin: 20,
+    borderRadius: 12,
+    padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  summaryItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  macrosContent: {
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
-  summaryItemHeader: {
+  macrosList: {
+    marginTop: 20,
+  },
+  macroItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 12,
   },
   macroIndicator: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    marginRight: 8,
+    marginRight: 12,
   },
-  summaryItemTitle: {
+  macroInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  macroLabel: {
     fontSize: 16,
+    color: '#0f172a',
   },
-  summaryItemValue: {
+  macroValue: {
     fontSize: 16,
     fontWeight: '500',
+    color: '#64748b',
   },
-}); 
+});

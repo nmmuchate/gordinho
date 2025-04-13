@@ -17,7 +17,7 @@ interface AIStore {
 }
 
 const openai = new OpenAI({
-  apiKey: "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",
+  apiKey: "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",
   dangerouslyAllowBrowser: true
 });
 
@@ -49,7 +49,7 @@ export const useAIStore = create<AIStore>((set) => ({
       set({ isAnalyzing: true, error: null });
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4-vision-preview",
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",

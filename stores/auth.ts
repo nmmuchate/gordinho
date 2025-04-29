@@ -10,7 +10,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 interface UserProfile {
   id: string;

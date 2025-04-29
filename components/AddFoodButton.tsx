@@ -1,6 +1,6 @@
-import { View, TouchableOpacity, StyleSheet, Text, Modal, Image, TextInput, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Text, Modal, Image, TextInput, ActivityIndicator, Alert, Linking } from 'react-native';
 import { Plus, X, Search, Camera, CircleAlert as AlertCircle } from 'lucide-react-native';
-import { useState, useCallback } from 'react';
+import React,{ useState, useCallback } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../stores/auth';
 import { useFoodStore } from '../stores/food';
@@ -54,6 +54,23 @@ export default function AddFoodButton() {
 
   const handleTakePhoto = async () => {
     try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      console.log('Camera ligada', status);
+      if (status !== 'granted'){
+        Alert.alert(
+          'Permissão negada',
+          'A permissão para usar a câmera foi negada. Você pode activá-la nas configurações.',
+          [
+            {
+              text: 'Cancelar', style: 'cancel'
+            },
+            {
+              text: 'Abrir configurações', onPress: async () => await Linking.openSettings()
+            }
+          ]
+        );
+        return;
+      }
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -190,10 +207,10 @@ export default function AddFoodButton() {
                     onPress={handleTakePhoto}
                   >
                     <Camera size={24} color="#0891b2" />
-                    <Text style={styles.optionText}>Take Photo</Text>
+                    <Text style={styles.optionText}>Tirar foto</Text>
                   </TouchableOpacity>
 
-                  <View style={styles.searchContainer}>
+                  {/* <View style={styles.searchContainer}>
                     <Search size={20} color="#64748b" style={styles.searchIcon} />
                     <TextInput
                       style={styles.searchInput}
@@ -201,15 +218,15 @@ export default function AddFoodButton() {
                       value={searchQuery}
                       onChangeText={handleSearch}
                     />
-                  </View>
+                  </View> */}
                 </View>
 
-                {(foodError || aiError) && (
+                {/* {(foodError || aiError) && (
                   <View style={styles.errorContainer}>
                     <AlertCircle size={20} color="#ef4444" />
                     <Text style={styles.errorText}>{foodError || aiError}</Text>
                   </View>
-                )}
+                )} */}
 
                 {(isSearching || isAnalyzing) ? (
                   <View style={styles.loadingContainer}>

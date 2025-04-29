@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart } from 'react-native-chart-kit';
 import { useAuthStore } from '../../stores/auth';
@@ -7,6 +7,7 @@ import { useFoodStore } from '../../stores/food';
 import { useExerciseStore } from '../../stores/exercise';
 import LoadingScreen from '../../components/LoadingScreen';
 import AddFoodButton from '@/components/AddFoodButton';
+import { colors } from '@/constants/Colors';
 
 export default function HomeScreen() {
   const screenWidth = Dimensions.get('window').width;
@@ -19,18 +20,16 @@ export default function HomeScreen() {
   useEffect(() => {
     if (user) {
       fetchEntries(user.uid, selectedDate);
-      fetchExercises(user.uid, selectedDate);
     }
   }, [user, selectedDate]);
 
   if (foodLoading || exerciseLoading) {
-    return <LoadingScreen message="Loading your dashboard..." />;
+    return <LoadingScreen message="Carregando seu painel..." />;
   }
 
   const dailyGoal = profile?.dailyCalories || 2000;
   const consumedCalories = getTotalCalories(selectedDate);
-  const burnedCalories = getTotalCaloriesBurned(selectedDate);
-  const remainingCalories = dailyGoal - consumedCalories + burnedCalories;
+  const remainingCalories = dailyGoal - consumedCalories ;
   const macros = getMacroTotals(selectedDate);
 
   // Calculate the last 7 days of calorie data
@@ -41,59 +40,94 @@ export default function HomeScreen() {
   }).reverse();
 
   const caloriesData = {
-    labels: last7Days.map(date => date.toLocaleDateString('en-US', { weekday: 'short' })),
+    labels: last7Days.map(date => date.toLocaleDateString('pt-BR', { weekday: 'short' })),
     datasets: [
       {
         data: last7Days.map(date => getTotalCalories(date)),
+        color: (opacity = 1) => colors.primary.orange,
+        strokeWidth: 2,
       },
     ],
   };
+
+  // Get latest food entries
+  const todayEntries = entries.filter(entry => {
+    const entryDate = new Date(entry.timestamp);
+    return (
+      entryDate.getDate() === selectedDate.getDate() &&
+      entryDate.getMonth() === selectedDate.getMonth() &&
+      entryDate.getFullYear() === selectedDate.getFullYear()
+    );
+  });
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
-          <Text style={styles.greeting}>Hello, {profile?.name || 'User'}!</Text>
-          <Text style={styles.date}>{selectedDate.toLocaleDateString()}</Text>
+          <Text style={styles.greeting}>Olá, {profile?.name || 'Usuário'}!</Text>
+          <Text style={styles.date}>{selectedDate.toLocaleDateString('pt-PT')}</Text>
         </View>
 
         <View style={styles.caloriesSummary}>
-          <Text style={styles.sectionTitle}>Today's Calories</Text>
+          <Text style={styles.sectionTitle}>Calorias de Hoje</Text>
           <View style={styles.caloriesInfo}>
             <View style={styles.calorieItem}>
               <Text style={styles.calorieValue}>{consumedCalories}</Text>
-              <Text style={styles.calorieLabel}>Consumed</Text>
+              <Text style={styles.calorieLabel}>Consumidas</Text>
             </View>
             <View style={styles.calorieItem}>
               <Text style={styles.calorieValue}>{dailyGoal}</Text>
-              <Text style={styles.calorieLabel}>Goal</Text>
+              <Text style={styles.calorieLabel}>Meta</Text>
             </View>
             <View style={styles.calorieItem}>
-              <Text style={styles.calorieValue}>{remainingCalories}</Text>
-              <Text style={styles.calorieLabel}>Remaining</Text>
+              <Text style={[styles.calorieValue, remainingCalories < 0 && styles.calorieOverage]}>{remainingCalories}</Text>
+              <Text style={styles.calorieLabel}>Restantes</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.macrosContainer}>
-          <Text style={styles.sectionTitle}>Macronutrients</Text>
+          <Text style={styles.sectionTitle}>Macros de Hoje</Text>
           <View style={styles.macrosList}>
             <View style={styles.macroItem}>
               <Text style={styles.macroValue}>{macros.carbs}g</Text>
-              <Text style={styles.macroLabel}>Carbs</Text>
-              <View style={[styles.progressBar, { backgroundColor: '#0891b2' }]} />
+              <Text style={styles.macroLabel}>Carboidratos</Text>
+              <View style={[styles.progressBar, { backgroundColor: colors.status.info }]} />
             </View>
             <View style={styles.macroItem}>
               <Text style={styles.macroValue}>{macros.protein}g</Text>
-              <Text style={styles.macroLabel}>Protein</Text>
-              <View style={[styles.progressBar, { backgroundColor: '#059669' }]} />
+              <Text style={styles.macroLabel}>Proteína</Text>
+              <View style={[styles.progressBar, { backgroundColor: colors.status.success }]} />
             </View>
             <View style={styles.macroItem}>
               <Text style={styles.macroValue}>{macros.fat}g</Text>
-              <Text style={styles.macroLabel}>Fat</Text>
-              <View style={[styles.progressBar, { backgroundColor: '#d97706' }]} />
+              <Text style={styles.macroLabel}>Gordura</Text>
+              <View style={[styles.progressBar, { backgroundColor: colors.status.warning }]} />
             </View>
           </View>
+        </View>
+        <View style={styles.recentContainer}>
+          <Text style={styles.sectionTitle}>Alimentos de Hoje</Text>
+          {todayEntries.length > 0 ? (
+            todayEntries.map((entry, index) => (
+              <View key={index} style={styles.foodItem}>
+                {entry.image ? (
+                  <Image source={{ uri: entry.image }} style={styles.foodImage} />
+                ) : (
+                  <View style={styles.foodImagePlaceholder} />
+                )}
+                <View style={styles.foodInfo}>
+                  <Text style={styles.foodName}>{entry.name}</Text>
+                  <Text style={styles.foodMacros}>
+                    P: {entry.protein}g • C: {entry.carbs}g • G: {entry.fat}g
+                  </Text>
+                </View>
+                <Text style={styles.foodCalories}>{entry.calories} cal</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyText}>Nenhum alimento registrado hoje</Text>
+          )}
         </View>
       </ScrollView>
       <AddFoodButton/>
@@ -114,6 +148,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e5e5',
+  },
+  recentContainer: {
+    backgroundColor: colors.background.primary,
+    padding: 20,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 12,
+    shadowColor: colors.primary.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  foodItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
   },
   greeting: {
     fontSize: 24,
@@ -188,6 +241,41 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  calorieOverage: {
+    color: colors.status.error,
+  },
+  foodImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  foodImagePlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: colors.secondary.gray[100],
+  },
+  foodInfo: {
+    flex: 1,
+  },
+  foodName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.text.primary,
+  },
+  foodMacros: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    marginTop: 2,
+  },
+  foodCalories: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.text.secondary,
+    marginLeft: 16,
+  },
   macrosList: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -211,5 +299,11 @@ const styles = StyleSheet.create({
     width: '80%',
     borderRadius: 2,
     marginTop: 8,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });

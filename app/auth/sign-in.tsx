@@ -1,27 +1,114 @@
-import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView, Alert } from 'react-native';
+import { Link, useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../stores/auth';
 
 export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { signIn, signInWithGoogle, error, isLoading } = useAuthStore();
+  const [localError, setLocalError] = useState('');
+  const { signIn, signInWithGoogle, error, isLoading, clearError } = useAuthStore();
   const router = useRouter();
+  const params = useLocalSearchParams();
+
+  // Verifica se há erro nos parâmetros da URL
+  useEffect(() => {
+    if (params.error) {
+      const errorMessages = {
+        'google_signin_failed': 'Falha no login com Google. Tente novamente.',
+        'signin_exception': 'Erro no processo de login. Verifique sua conexão.',
+        'network_error': 'Erro de conexão. Verifique sua internet.',
+        'auth_failed': 'Credenciais inválidas. Tente novamente.'
+      };
+      
+      const errorMessage = errorMessages[params.error as string] || 'Erro desconhecido no login.';
+      setLocalError(errorMessage);
+      
+      // Limpa o parâmetro de erro da URL após processar
+      router.replace('/auth/sign-in');
+      
+      // Limpa o erro após 5 segundos
+      setTimeout(() => setLocalError(''), 5000);
+    }
+  }, [params.error]);
+
+  // Limpa erros quando o componente é montado
+  useEffect(() => {
+    if (clearError) {
+      clearError();
+    }
+  }, [clearError]);
 
   const handleSignIn = async () => {
-    await signIn(email, password);
-    if (!error) {
-      router.replace('/(tabs)');
+    try {
+      setLocalError(''); // Limpa erros locais
+      if (clearError) clearError(); // Limpa erros do store
+      
+      const result = await signIn(email, password);
+      
+      if (!error && !result?.error) {
+        // O redirecionamento será feito pelo _layout.tsx
+        console.log('Login bem-sucedido');
+      } else {
+        console.error('Erro no login:', error || result?.error);
+        setLocalError('Falha no login. Verifique suas credenciais.');
+      }
+    } catch (err) {
+      console.error('Exceção capturada no handleSignIn:', err);
+      setLocalError('Erro inesperado. Tente novamente.');
     }
   };
 
   const handleGoogleSignIn = async () => {
-    await signInWithGoogle();
-    if (!error) {
-      router.replace('/(tabs)');
+    try {
+      setLocalError(''); // Limpa erros locais
+      if (clearError) clearError(); // Limpa erros do store
+      
+      console.log('Iniciando login com Google...');
+      
+      const result = await signInWithGoogle();
+      
+      // Aguarda um pouco para o estado ser atualizado
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Verifica se ainda há erro após a tentativa
+      if (error || result?.error) {
+        console.error('Erro no Google Sign-In:', error || result?.error);
+        setLocalError('Falha no login com Google. Tente novamente.');
+        return;
+      }
+      
+      console.log('Login Google bem-sucedido');
+      // O redirecionamento será feito pelo _layout.tsx automaticamente
+      
+    } catch (err) {
+      console.error('Exceção capturada no handleGoogleSignIn:', {
+        message: err.message,
+        code: err.code,
+        stack: err.stack,
+        fullError: err
+      });
+      
+      // Define erro local em vez de redirecionar
+      let errorMessage = 'Erro no login com Google. Tente novamente.';
+      if (err.message?.includes('network') || err.message?.includes('connection')) {
+        errorMessage = 'Erro de conexão. Verifique sua internet e tente novamente.';
+      } else if (err.message?.includes('cancelled') || err.message?.includes('canceled')) {
+        errorMessage = 'Login cancelado pelo usuário.';
+      }
+      
+      setLocalError(errorMessage);
     }
   };
+
+  // Função para limpar todos os erros
+  const clearAllErrors = () => {
+    setLocalError('');
+    if (clearError) clearError();
+  };
+
+  // Mostra erro local ou do store
+  const displayError = localError || error;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -36,43 +123,21 @@ export default function SignInScreen() {
       </View>
 
       <View style={styles.form}>
-        {error && <Text style={styles.error}>{error}</Text>}
-        
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-        
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+        {/* Exibe erro com estilo melhorado */}
+        {/* {displayError && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.error}>{displayError}</Text>
+            <TouchableOpacity 
+              onPress={clearAllErrors}
+              style={styles.errorClose}
+            >
+              <Text style={styles.errorCloseText}>×</Text>
+            </TouchableOpacity>
+          </View>
+        )} */}
 
         <TouchableOpacity 
-          style={styles.button}
-          onPress={handleSignIn}
-          disabled={isLoading}
-        >
-          <Text style={styles.buttonText}>
-            {isLoading ? 'Signing in...' : 'Sign In'}
-          </Text>
-        </TouchableOpacity>
-
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <TouchableOpacity 
-          style={styles.googleButton}
+          style={[styles.googleButton, isLoading && styles.buttonDisabled]}
           onPress={handleGoogleSignIn}
           disabled={isLoading}
         >
@@ -81,15 +146,39 @@ export default function SignInScreen() {
             style={styles.googleIcon}
           />
           <Text style={styles.googleButtonText}>
-            Continue with Google
+            {isLoading ? 'Conectando...' : 'Continue with Google'}
           </Text>
         </TouchableOpacity>
 
-        <Link href="/auth/sign-up" style={styles.link}>
-          <Text style={styles.linkText}>
-            Don't have an account? Sign up
-          </Text>
-        </Link>
+        {/* Botão para tentar novamente em caso de erro */}
+        {displayError && !isLoading && (
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => {
+              clearAllErrors();
+              handleGoogleSignIn();
+            }}
+          >
+            <Text style={styles.retryButtonText}>Tentar Novamente</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Botão de debug (remover em produção) */}
+        {/* {__DEV__ && (
+          <TouchableOpacity 
+            style={styles.debugButton}
+            onPress={() => {
+              console.log('Estado atual:', {
+                error,
+                localError,
+                isLoading,
+                params
+              });
+            }}
+          >
+            <Text style={styles.debugButtonText}>Debug Info</Text>
+          </TouchableOpacity>
+        )} */}
       </View>
     </ScrollView>
   );
@@ -147,6 +236,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -166,7 +258,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f59e0b',
     padding: 15,
     borderRadius: 10,
     borderWidth: 1,
@@ -179,9 +271,21 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   googleButtonText: {
-    color: '#374151',
+    color: '#ffffff',
     fontSize: 16,
     fontWeight: '500',
+  },
+  retryButton: {
+    backgroundColor: '#f59e0b',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   link: {
     marginTop: 16,
@@ -191,9 +295,41 @@ const styles = StyleSheet.create({
     color: '#0891b2',
     fontSize: 16,
   },
-  error: {
-    color: '#ef4444',
+  errorContainer: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
     marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  error: {
+    color: '#dc2626',
     fontSize: 14,
+    flex: 1,
+  },
+  errorClose: {
+    marginLeft: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  errorCloseText: {
+    color: '#dc2626',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  debugButton: {
+    backgroundColor: '#f3f4f6',
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  debugButtonText: {
+    color: '#6b7280',
+    fontSize: 12,
   },
 });

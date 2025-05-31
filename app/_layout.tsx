@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
@@ -9,7 +9,7 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { useAuthStore } from '@/stores/auth';
-import LoadingScreen from '@/components/LoadingScreen'; // Import the LoadingScreen component
+import LoadingScreen from '@/components/LoadingScreen';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -18,27 +18,54 @@ export default function RootLayout() {
   useFrameworkReady();
   const { user, isLoading, needsOnboarding } = useAuthStore();
   const router = useRouter();
+  const segments = useSegments();
+  const [isNavigationReady, setIsNavigationReady] = useState(false);
   
-  // Efeito para controlar redirecionamentos baseados em autenticação
+  // Aguarda a navegação estar pronta
   useEffect(() => {
-    if (!isLoading) {
-      if (!user) {
-        // Usuário não está autenticado, redirecionar para login
-        router.push('/auth/sign-in');
-      } else if(needsOnboarding?.()) {
-        router.push('/onboarding');
-      }else {
-        // Usuário autenticado e onboarding completo
-        router.push('/(tabs)');
+    const timer = setTimeout(() => {
+      setIsNavigationReady(true);
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  useEffect(() => {
+    // Só processa redirecionamentos quando tudo estiver pronto
+    if (!isNavigationReady || isLoading) return;
+    
+    const inAuthGroup = segments[0] === 'auth';
+    const inTabsGroup = segments[0] === '(tabs)';
+    const inOnboardingGroup = segments[0] === 'onboarding';
+    
+    // Lógica de redirecionamento baseada no estado de autenticação
+    if (!user) {
+      // Usuário não autenticado - deve estar em auth
+      if (!inAuthGroup) {
+        router.replace('/auth/sign-in');
+      }
+    } else {
+      // Usuário autenticado
+      if (needsOnboarding?.()) {
+        // Precisa fazer onboarding
+        if (!inOnboardingGroup) {
+          router.replace('/onboarding');
+        }
+      } else {
+        // Onboarding completo - deve estar nas tabs
+        if (!inTabsGroup) {
+          router.replace('/(tabs)');
+        }
       }
     }
-  }, [user, isLoading, needsOnboarding]);
+  }, [user, isLoading, needsOnboarding, segments, isNavigationReady]);
 
-  if (isLoading) {
+  // Mostra loading enquanto não está pronto
+  if (!isNavigationReady || isLoading) {
     return <LoadingScreen message="Loading, please wait..." />;
   }
 
-  // Renderizar a estrutura de navegação sem redirecionamentos condicionais
+  // Renderizar a estrutura de navegação
   return (
     <>
       <Stack screenOptions={{ headerShown: false }}>

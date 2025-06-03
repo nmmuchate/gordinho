@@ -7,8 +7,9 @@ import { useFoodStore } from '../../stores/food';
 import { useCache, useUIState } from '../../hooks/useUIState';
 import { useExerciseStore } from '../../stores/exercise';
 import LoadingScreen from '../../components/LoadingScreen';
+import { HomeScreenSkeleton } from '@/components/SkeletonScreen';
 import AddFoodButton from '@/components/AddFoodButton';
-import useToast from '@/components/ToastNotification';
+import { useToast } from '@/components/ToastNotification';
 import { colors } from '@/constants/Colors';
 
 export default function HomeScreen() {
@@ -99,14 +100,37 @@ export default function HomeScreen() {
       setRefreshing(false);
     }
   }, [fetchData, cache, toast]);
-  if (foodLoading || exerciseLoading) {
-    return <LoadingScreen message="Carregando seu painel..." />;
-  }
 
-  const dailyGoal = profile?.dailyCalories || 2000;
-  const consumedCalories = getTotalCalories(selectedDate);
-  const remainingCalories = dailyGoal - consumedCalories ;
-  const macros = getMacroTotals(selectedDate);
+  // Effect to fetch data when user or date changes
+  useEffect(() =>{
+    if (userId){
+      fetchData();
+    }
+  }, [userId, selectedDateString]); // use memoized values
+
+  // Memoized calculations to prevent recalculations
+  const calculatedValues = useMemo(() => {
+    const dailyGoal = profile?.dailyCalories || 2000;
+    const consumedCalories = getTotalCalories(selectedDate);
+    // const burnedCalories = getTotalCaloriesBurned?.(selectedDate) || 0;
+    // const netCalories = consumedCalories - burnedCalories;
+    const remainingCalories = dailyGoal - consumedCalories;
+    const macros = getMacroTotals(selectedDate);
+
+    return {
+      dailyGoal,
+      consumedCalories,
+      // burnedCalories,
+      // netCalories,
+      remainingCalories,
+      macros,
+    };
+  },[profile?.dailyCalories, getTotalCalories,  selectedDate, getMacroTotals]);
+  // if (foodLoading) {
+  //   return <LoadingScreen message="Carregando seu painel..." />;
+  // }
+
+
   
   // Calculate the last 7 days of calorie data
   const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -127,14 +151,26 @@ export default function HomeScreen() {
   };
 
   // Get latest food entries
-  const todayEntries = entries.filter(entry => {
-    const entryDate = new Date(entry.timestamp);
-    return (
-      entryDate.getDate() === selectedDate.getDate() &&
-      entryDate.getMonth() === selectedDate.getMonth() &&
-      entryDate.getFullYear() === selectedDate.getFullYear()
-    );
-  });
+  const todayEntries = useMemo(() => {
+    return entries.filter(entry => {
+      const entryDate = new Date(entry.timestamp);
+      return (
+        entryDate.getDate() === selectedDate.getDate() &&
+        entryDate.getMonth() === selectedDate.getMonth() &&
+        entryDate.getFullYear() === selectedDate.getFullYear()
+      );
+    });
+  }, [entries, selectedDate]);
+
+  if(authLoading || foodLoading || uiState.isLoading){
+    return <HomeScreenSkeleton />
+  }
+
+  const {
+    dailyGoal,
+    consumedCalories,
+    macros
+  } = calculatedValues;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -156,7 +192,7 @@ export default function HomeScreen() {
               <Text style={styles.calorieLabel}>Meta</Text>
             </View>
             <View style={styles.calorieItem}>
-              <Text style={[styles.calorieValue, remainingCalories < 0 && styles.calorieOverage]}>{remainingCalories}</Text>
+              {/* <Text style={[styles.calorieValue, remainingCalories < 0 && styles.calorieOverage]}>{remainingCalories}</Text> */}
               <Text style={styles.calorieLabel}>Restantes</Text>
             </View>
           </View>

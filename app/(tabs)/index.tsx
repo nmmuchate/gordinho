@@ -1,28 +1,83 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, Dimensions, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart } from 'react-native-chart-kit';
 import { useAuthStore } from '../../stores/auth';
 import { useFoodStore } from '../../stores/food';
+import { useCache, useUIState } from '../../hooks/useUIState';
 import { useExerciseStore } from '../../stores/exercise';
 import LoadingScreen from '../../components/LoadingScreen';
 import AddFoodButton from '@/components/AddFoodButton';
+import useToast from '@/components/ToastNotification';
 import { colors } from '@/constants/Colors';
 
 export default function HomeScreen() {
   const screenWidth = Dimensions.get('window').width;
   const chartWidth = screenWidth - 40; // Subtrai as margens horizontais (20px de cada lado)
   const [selectedDate] = useState(new Date());
-  const { user, profile } = useAuthStore();
-  const { entries, isLoading: foodLoading, fetchEntries, getTotalCalories, getMacroTotals } = useFoodStore();
-  const { exercises, isLoading: exerciseLoading, fetchExercises, getTotalCaloriesBurned } = useExerciseStore();
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      fetchEntries(user.uid, selectedDate);
+  //Enhanced UI state management
+  const uiState = useUIState({
+    debounceMs: 300,
+    autoResetMs: 3000,
+    enableOptimisticUpdates: true
+  });
+
+  //Toast Notification
+  const toast = useToast();
+  const cache = useCache<any>('home-data', 2 * 60 * 1000);
+
+ const {
+    user,
+    profile,
+    isLoading: authLoading
+  } = useAuthStore();
+  const { 
+    entries, 
+    isLoading: foodLoading, 
+    fetchEntries, 
+    getTotalCalories, 
+    getMacroTotals 
+  } = useFoodStore();
+  // const { exercises, isLoading: exerciseLoading, fetchExercises, getTotalCaloriesBurned } = useExerciseStore();
+
+  // Memoize stable values to prevent unnecessary re-renders
+  const selectedDateString = useMemo(() => selectedDate.toDateString(), [selectedDate]);
+
+  const userId = useMemo(() => user?.uid, [user?.uid]);
+
+  // Enhanced data fetching with caching and feedback
+  const fetchData = useCallback(async () => {
+    if(!userId) return;
+
+    const cacheKey = `${userId} -${selectedDateString}`;
+    const cachedData = cache.get(cacheKey);
+
+    if (cachedData) {
+      console.log('Using cached data');
+      return cachedData;
     }
-  }, [user, selectedDate]);
 
+    try {
+      uiState.setCalculating('Carregando o seu painel...', 0);
+
+      // Fetch entries
+      uiState.updateProgress(50, 'Carregando suas refeições...');
+      await fetchEntries(userId, selectedDate);
+
+      // Fetch exercises
+      // uiState.updateProgress(75, 'Carregando seus exercícios...');
+      // await fetchExercises(userId, selectedDate);
+
+      uiState.updateProgress(100, 'Pronto!');
+      uiState.setSuccess('Sucesso ao carregar os dados!');
+    }
+
+    //cache the result
+    const data = { entries , exercices};
+    cache.set(cacheKey, data);
+  })
   if (foodLoading || exerciseLoading) {
     return <LoadingScreen message="Carregando seu painel..." />;
   }
@@ -31,7 +86,7 @@ export default function HomeScreen() {
   const consumedCalories = getTotalCalories(selectedDate);
   const remainingCalories = dailyGoal - consumedCalories ;
   const macros = getMacroTotals(selectedDate);
-
+  
   // Calculate the last 7 days of calorie data
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const date = new Date();

@@ -72,12 +72,33 @@ export default function HomeScreen() {
 
       uiState.updateProgress(100, 'Pronto!');
       uiState.setSuccess('Sucesso ao carregar os dados!');
-    }
 
-    //cache the result
-    const data = { entries , exercices};
+      //cache the result
+    const data = { entries };
     cache.set(cacheKey, data);
-  })
+    return data;
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      uiState.setError('Erro ao carregar os dados!');
+      throw error;
+    } 
+  }, [userId, selectedDate, cache, uiState, fetchEntries]);
+
+  // Pull to refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      // clear cache for fresh data
+      cache.clear();
+      await fetchData();
+      toast.showSuccess('Sucesso ao carregar os dados!', 'Os seus dados foram atualizados.');
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      toast.showError('Erro ao carregar os dados!', 'Por favor, tente novamente.');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchData, cache, toast]);
   if (foodLoading || exerciseLoading) {
     return <LoadingScreen message="Carregando seu painel..." />;
   }
@@ -186,6 +207,8 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
       <AddFoodButton/>
+
+      <toast.ToastComponent />
     </SafeAreaView>
   );
 }
